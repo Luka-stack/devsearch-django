@@ -1,24 +1,45 @@
+from calendar import c
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-
-from .forms import ProjectForm
+from django.contrib import messages
+from projects.utils import paginate_project, search_projects
+from .forms import ProjectForm, ReviewForm
 from .models import Project
 
 
 def projects(request):
-    projects_list = Project.objects.all()
-    context = {'projects': projects_list}
+    project_list, query = search_projects(request)
+    custom_range, project_list = paginate_project(request, project_list, 1)
+
+    context = {'projects': project_list,
+               'search_query': query, 'custom_range': custom_range}
 
     return render(request, 'projects/projects.html', context)
 
 
 def project(request, pk):
     project_obj = Project.objects.get(id=pk)
+    form = ReviewForm()
 
-    return render(request, 'projects/single-project.html', {'project': project_obj})
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        review = form.save(commit=False)
+        review.project = project_obj
+        review.owner = request.user.profile
+        review.save()
+
+        project_obj.get_vote_count
+
+        messages.success(request, 'Your review was successfully submitted!')
+
+        return redirect('project', pk=pk)
+
+    context = {'project': project_obj, 'form': form}
+
+    return render(request, 'projects/single-project.html', context)
 
 
-@login_required(login_url='login')
+@ login_required(login_url='login')
 def create_project(request):
     profile = request.user.profile
     form = ProjectForm()
@@ -37,7 +58,7 @@ def create_project(request):
     return render(request, "projects/project-form.html", context)
 
 
-@login_required(login_url='login')
+@ login_required(login_url='login')
 def update_project(request, pk):
     profile = request.user.profile
     project_obj = profile.project_set.get(id=pk)
@@ -55,7 +76,7 @@ def update_project(request, pk):
     return render(request, "projects/project-form.html", context)
 
 
-@login_required(login_url='login')
+@ login_required(login_url='login')
 def delete_project(reqeust, pk):
     profile = reqeust.user.profile
     project_obj = profile.project_set.get(id=pk)

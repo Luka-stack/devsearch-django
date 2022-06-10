@@ -1,5 +1,3 @@
-from email import contentmanager
-import re
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
@@ -7,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import Profile
 from .forms import CustomUserCreationForm, ProfileForm, SkillForm
+from .utils import paginate_profiles, search_profiles
 
 
 def login_user(request):
@@ -16,7 +15,7 @@ def login_user(request):
         return redirect('profiles')
 
     if request.method == 'POST':
-        username = request.POST['username']
+        username = request.POST['username'].lower()
         password = request.POST['password']
 
         try:
@@ -28,7 +27,7 @@ def login_user(request):
 
         if user:
             login(request, user)
-            return redirect('profiles')
+            return redirect(request.GET['next'] if 'next' in request.GET else 'account')
         else:
             messages.error(request, 'Username or password is incorrect')
 
@@ -67,8 +66,11 @@ def register_user(request):
 
 
 def profiles(request):
-    profiles = Profile.objects.all()
-    context = {'profiles': profiles}
+    profiles, query = search_profiles(request)
+    custom_range, profiles = paginate_profiles(request, profiles, 1)
+
+    context = {'profiles': profiles, 'search_query': query,
+               'custom_range': custom_range}
     return render(request, 'users/profiles.html', context)
 
 
