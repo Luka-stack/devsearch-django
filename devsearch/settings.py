@@ -118,6 +118,13 @@ USE_I18N = True
 
 USE_TZ = True
 
+# EMAIL CONFIGURATION
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mailtrap.io'
+EMAIL_HOST_USER = '383a578d336a00'
+EMAIL_HOST_PASSWORD = '20c71f8f9199b1'
+EMAIL_PORT = '2525'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/

@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
 from .models import Profile
-from .forms import CustomUserCreationForm, ProfileForm, SkillForm
+from .forms import CustomUserCreationForm, MessageForm, ProfileForm, SkillForm
 from .utils import paginate_profiles, search_profiles
 
 
@@ -27,7 +27,7 @@ def login_user(request):
 
         if user:
             login(request, user)
-            return redirect(request.GET['next'] if 'next' in request.GET else 'account')
+            return redirect(request.GET['next'] if 'next' in request.GET else 'user-account')
         else:
             messages.error(request, 'Username or password is incorrect')
 
@@ -67,7 +67,7 @@ def register_user(request):
 
 def profiles(request):
     profiles, query = search_profiles(request)
-    custom_range, profiles = paginate_profiles(request, profiles, 1)
+    custom_range, profiles = paginate_profiles(request, profiles, 3)
 
     context = {'profiles': profiles, 'search_query': query,
                'custom_range': custom_range}
@@ -171,3 +171,59 @@ def delete_skill(request, pk):
     context = {'object': skill}
 
     return render(request, 'delete-template.html', context)
+
+
+@login_required(login_url='login')
+def inbox(request):
+    profile = request.user.profile
+    message_requests = profile.messages.all()
+    unreadCount = message_requests.filter(is_read=False).count()
+    context = {'message_requests': message_requests,
+               'unread_count': unreadCount}
+
+    return render(request, 'users/inbox.html', context)
+
+
+@login_required(login_url='login')
+def view_message(request, pk):
+    profile = request.user.profile
+    message = profile.messages.get(id=pk)
+    context = {'message': message}
+
+    if not message.is_read:
+        message.is_read = True
+        message.save()
+
+    return render(request, 'users/message.html', context)
+
+
+def send_message(request, pk):
+    recipient = Profile.objects.get(id=pk)
+    form = MessageForm()
+
+    try:
+        sender = request.user.profile
+    except:
+        sender = None
+
+    if request.method == 'POST':
+        form = MessageForm(request.POST)
+
+        if form.is_valid():
+            message = form.save(commit=False)
+            message.sender = sender
+            message.recipient = recipient
+
+            if sender:
+                message.name = sender.name
+                message.email = sender.email
+
+            message.save()
+
+            messages.success(request, 'Your message has been sent')
+
+            return redirect('user-profile', pk=recipient.id)
+
+    context = {'recipient': recipient, "form": form}
+
+    return render(request, 'users/message_form.html', context)
