@@ -26,6 +26,18 @@ class Profile(models.Model):
     def __str__(self) -> str:
         return str(self.username)
 
+    class Meta:
+        ordering = ['created']
+
+    @property
+    def image_url(self):
+        try:
+            url = self.profile_img.url
+        except:
+            url = ''
+
+        return url
+
 
 class Skill(models.Model):
     id = models.UUIDField(default=uuid.uuid4, unique=True,

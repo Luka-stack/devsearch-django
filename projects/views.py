@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from projects.utils import paginate_project, search_projects
 from .forms import ProjectForm, ReviewForm
-from .models import Project
+from .models import Project, Tag
 
 
 def projects(request):
@@ -39,12 +39,13 @@ def project(request, pk):
     return render(request, 'projects/single-project.html', context)
 
 
-@ login_required(login_url='login')
+@login_required(login_url='login')
 def create_project(request):
     profile = request.user.profile
     form = ProjectForm()
 
     if request.method == 'POST':
+        newTags = request.POST.get('newTags').replace(',', ' ').split()
         form = ProjectForm(request.POST, request.FILES)
 
         if form.is_valid():
@@ -52,31 +53,40 @@ def create_project(request):
             project.owner = profile
             project.save()
 
+            for tag in newTags:
+                tag, created = Tag.objects.get_or_create()
+                project.tags.add(tag)
+
             return redirect('projects')
 
     context = {'form': form}
     return render(request, "projects/project-form.html", context)
 
 
-@ login_required(login_url='login')
+@login_required(login_url='login')
 def update_project(request, pk):
     profile = request.user.profile
     project_obj = profile.project_set.get(id=pk)
     form = ProjectForm(instance=project_obj)
 
     if request.method == 'POST':
+        newTags = request.POST.get('newTags').replace(',', ' ').split()
         form = ProjectForm(request.POST, request.FILES, instance=project_obj)
 
         if form.is_valid():
-            form.save()
+            project = form.save()
+
+            for tag in newTags:
+                tag, created = Tag.objects.get_or_create()
+                project.tags.add(tag)
 
             return redirect('projects')
 
-    context = {'form': form}
+    context = {'form': form, 'project': project_obj}
     return render(request, "projects/project-form.html", context)
 
 
-@ login_required(login_url='login')
+@login_required(login_url='login')
 def delete_project(reqeust, pk):
     profile = reqeust.user.profile
     project_obj = profile.project_set.get(id=pk)
